@@ -5,21 +5,36 @@ from pathlib import Path
 import time
 import psutil
 import numpy as np
-from sklearn.metrics import adjusted_rand_score
 from wordllama import WordLlama
 from xklb.utils import printing, objects
+from xklb.utils.log_utils import log
 
 logger = logging.getLogger('kmeans_logger')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 parser = argparse.ArgumentParser(description="Process sentences from a file.")
 parser.add_argument('-n', type=int, default=5, help='Number of runs to perform per variable.')
-
+parser.add_argument("--verbose", "-v", action="count", default=0)
 parser.add_argument('path', type=str, help='Path to the text file containing sentences.')
 args = parser.parse_args()
 
 sentence_strings = Path(args.path).read_text().splitlines()
 num_runs = args.n
+
+def contiguous_labels_score(labels):
+    if not labels:
+        return 0.0
+
+    non_contiguous_count = 0
+    current_label = None
+    for label in labels:
+        if label != current_label:
+            non_contiguous_count += 1
+            current_label = label
+
+    contiguous_score = 1.0 - (non_contiguous_count - len(set(labels))) / len(labels)
+    return contiguous_score
+
 
 def evaluate_combination(num_clusters, min_iter):
     start_time = time.time()
@@ -43,9 +58,8 @@ def evaluate_combination(num_clusters, min_iter):
 
     speed = end_time - start_time
     ram_usage = final_memory - initial_memory
-
-    true_labels = [item for item in range(10) for _ in range(5)]
-    label_quality = adjusted_rand_score(true_labels, labels)
+    log.info(labels[:20])
+    label_quality = contiguous_labels_score(labels)
 
     return inertia, speed, ram_usage, label_quality
 
