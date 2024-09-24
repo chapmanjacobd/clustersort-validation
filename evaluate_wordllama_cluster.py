@@ -1,13 +1,17 @@
 import argparse
-from copy import deepcopy
+import ctypes
 import logging
-from pathlib import Path
 import time
-import psutil
+from copy import deepcopy
+from pathlib import Path
+
 import numpy as np
+import psutil
 from wordllama import WordLlama
-from xklb.utils import printing, objects
+from xklb.utils import objects, printing
 from xklb.utils.log_utils import log
+
+libc = ctypes.CDLL("libc.so.6")
 
 logger = logging.getLogger('kmeans_logger')
 logger.setLevel(logging.WARNING)
@@ -20,6 +24,7 @@ args = parser.parse_args()
 
 sentence_strings = Path(args.path).read_text().splitlines()
 num_runs = args.n
+
 
 def contiguous_labels_score(labels):
     if not labels:
@@ -37,6 +42,7 @@ def contiguous_labels_score(labels):
 
 
 def evaluate_combination(num_clusters, min_iter):
+    libc.malloc_trim(0)
     start_time = time.time()
     process = psutil.Process()
     initial_memory = process.memory_info().rss
